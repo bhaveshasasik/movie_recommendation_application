@@ -18,8 +18,8 @@ This application is a Movie Recommendation System that uses user-selected movies
 ### Clone the Application
 First, clone the repository to your local machine:
 ```bash
-$ git clone <repository-url>
-$ cd <repository-folder>
+$ git clone https://github.com/bhaveshasasik/movie_recommendation_application
+$ cd movie_recommendation_application
 ```
 
 ---
