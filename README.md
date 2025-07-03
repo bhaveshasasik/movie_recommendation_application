@@ -25,8 +25,8 @@ Flick Finder is a modern, user-friendly web application that recommends movies b
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/your-repo-name.git
-cd your-repo-name
+git clone https://github.com/your-username/movie_recommendation_application.git
+cd movie_recommendation_application
 ```
 
 ### 2. Install dependencies
