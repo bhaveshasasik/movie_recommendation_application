@@ -8,12 +8,30 @@ from sklearn.preprocessing import MinMaxScaler, MultiLabelBinarizer, LabelEncode
 from sklearn.metrics.pairwise import cosine_similarity
 import torch.optim as optim
 
+# Check for GPU availability
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"🚀 Using device: {DEVICE}")
 
 MOVIE_DATA_PATH = "data/cleaned_data.csv"
 USER_DATA_PATH = "data/user_data.csv"
 LATENT_DIM = 10
 HIDDEN_DIMS = [512, 256, 128, 64, 32]
 
+# --- GLOBAL DATA/MODEL LOADING FOR SPEED ---
+data, user_data, _, movie_encoder = None, None, None, None
+genre_list, movie_features = None, None
+vae = None
+
+def initialize_globals():
+    global data, user_data, movie_encoder, genre_list, movie_features, vae
+    data, user_data, _, movie_encoder = preprocess_data(MOVIE_DATA_PATH, USER_DATA_PATH)
+    genre_list, _, movie_features = prepare_features(data, user_data)
+    input_dim = len(genre_list) + 3
+    vae_model = VAE(input_dim, *HIDDEN_DIMS, LATENT_DIM)
+    vae_model.load_state_dict(torch.load("vae_model.pth", map_location=DEVICE))
+    vae_model.eval()
+    vae_model.to(DEVICE)
+    vae = vae_model
 
 # BACKEND CODE
 class Encoder(nn.Module):
@@ -60,6 +78,7 @@ class VAE(nn.Module):
         super(VAE, self).__init__()
         self.encoder = Encoder(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, hidden_dim4, hidden_dim5, latent_dim)
         self.decoder = Decoder(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, hidden_dim4, hidden_dim5, latent_dim)
+        self.to(DEVICE)  # Move model to GPU if available
 
     def reparameterize(self, mu, log_var):
         std = torch.exp(0.5 * log_var)
@@ -106,15 +125,9 @@ def preprocess_data(movie_data_path, user_data_path):
     for col in categorical_cols:
         data[col].fillna('Unknown', inplace=True)
 
-    # reducing number for genres, uncomment to return to original
-    
-
     data = data[data['startYear'] > 2000]
-    
     data = data.dropna(subset=['primaryTitle', 'averageRating', 'numVotes'])
-
-    # print(f"Data shape after dropping missing primaryTitle, averageRating, or numVotes: {data.shape}")
-
+    data['original_title'] = data['primaryTitle'].copy()
 
     scaler = MinMaxScaler()
     data[numerical_cols] = scaler.fit_transform(data[numerical_cols])
@@ -126,13 +139,10 @@ def preprocess_data(movie_data_path, user_data_path):
     genres_encoded_df = pd.DataFrame(genres_encoded, columns=multi_label_encoder.classes_)
     data = pd.concat([data, genres_encoded_df], axis=1)
 
-    # movie encoder for labeling
     movie_encoder = LabelEncoder()
     data['directorNames'] = movie_encoder.fit_transform(data['directorNames'])
     data['writerNames'] = movie_encoder.fit_transform(data['writerNames'])
     data['primaryTitle'] = movie_encoder.fit_transform(data['primaryTitle'])
-    # print(f"Unique primaryTitle encoded values: {data['primaryTitle'].nunique()}")
-
 
     user_data['UserRating'] = scaler.fit_transform(user_data[['UserRating']])
     user_data['user_genre_list'] = user_data['FavoriteGenres'].apply(lambda x: eval(x) if isinstance(x, str) else x)
@@ -140,38 +150,29 @@ def preprocess_data(movie_data_path, user_data_path):
     user_genres_encoded_df = pd.DataFrame(user_genres_encoded, columns=multi_label_encoder.classes_)
     user_data = pd.concat([user_data, user_genres_encoded_df], axis=1)
 
-    #user encoder for labeling
     user_encoder = LabelEncoder()
     user_data['FavoriteDirectors'] = user_encoder.fit_transform(user_data['FavoriteDirectors'])
     user_data['FavoriteActors'] = user_encoder.fit_transform(user_data['FavoriteActors'])
     user_data['primaryTitle'] = user_encoder.fit_transform(user_data['primaryTitle'])
     user_data['UserID'] = user_encoder.fit_transform(user_data['UserID'])
 
-    # print(data.head())
-
-
     return data, user_data, multi_label_encoder, movie_encoder
 
 def prepare_features(data, user_data):
     genre_list = [col for col in data.columns if col not in ['tconst', 'primaryTitle', 'startYear', 'genres', 'directorNames',
                                                              'writerNames', 'averageRating', 'numVotes', 'titleType_movie',
-                                                             'isAdult_0', 'isAdult_1', 'genre_list']]
-
-    movie_features = pd.concat([data[['tconst', 'averageRating', 'numVotes']]], axis=1)
-    movie_features['genres_list'] = data[genre_list].apply(
-        lambda genres: [1 if genres[genre] == 1 else 0 for genre in genre_list], axis=1
-    )
-
+                                                             'isAdult_0', 'isAdult_1', 'genre_list', 'original_title']]
+    movie_features = pd.concat([data[['tconst', 'averageRating', 'numVotes', 'original_title']]], axis=1)
+    if genre_list:
+        movie_features['genres_list'] = data[genre_list].apply(
+            lambda genres: [1 if genres[genre] == 1 else 0 for genre in genre_list], axis=1
+        )
+    else:
+        movie_features['genres_list'] = [[] for _ in range(len(movie_features))]
     user_features = pd.concat([user_data[['tconst', 'UserID', 'UserRating']]], axis=1)
-    
     merged_data = pd.merge(user_features, movie_features, on='tconst', how='inner')
-    merged_data.fillna(0, inplace=True)  # Fill remaining NaN with 0
-    
-    print(genre_list)
-    #print(len(genre_list))
-
+    merged_data.fillna(0, inplace=True)
     return genre_list, merged_data, movie_features
-    
 
 def create_x_input(merged_data):
     # Construct x_input
@@ -179,7 +180,6 @@ def create_x_input(merged_data):
     for index, row in merged_data.iterrows():
         x_input.append(list(row['genres_list']) + [row['averageRating'], row['numVotes'], row['UserRating']])
     return x_input
-
 
 def train_vae(x_input, epochs=50, batch_size=64, learning_rate=1e-3):
     merged_data_tensor = torch.tensor(x_input, dtype=torch.float32)
@@ -220,9 +220,9 @@ def train_vae(x_input, epochs=50, batch_size=64, learning_rate=1e-3):
 def get_user_embeddings(user_rating, movie_features_sample, vae):
     vae.eval()
     with torch.no_grad():
-        input_vector = torch.tensor(movie_features_sample + [user_rating], dtype=torch.float32)
+        input_vector = torch.tensor(movie_features_sample + [user_rating], dtype=torch.float32).to(DEVICE)
         _, mu, _ = vae(input_vector)
-    return mu.numpy()
+    return mu.cpu().numpy()
 
 def get_movie_embeddings(movie_features, vae, user_rating):
     vae.eval()
@@ -230,14 +230,44 @@ def get_movie_embeddings(movie_features, vae, user_rating):
 
     movie_features = movie_features.fillna(0)  # Ensure no NaN
 
+    # Prepare all movie inputs as a batch
+    movie_inputs = []
+    valid_indices = []
+    
+    for index, row in movie_features.iterrows():
+        try:
+            movie_input = torch.tensor(row['genres_list'] + [row['averageRating'], row['numVotes'], user_rating], dtype=torch.float32)
+            movie_inputs.append(movie_input)
+            valid_indices.append(index)
+        except Exception as e:
+            print(f"Error processing row {index}: {e}")
+
+    if not movie_inputs:
+        return []
+
+    # Process all movies in a single batch
     with torch.no_grad():
-        for index, row in movie_features.iterrows():
-            try:
-                movie_input = torch.tensor(row['genres_list'] + [row['averageRating'], row['numVotes'], user_rating], dtype=torch.float32)
-                mu, _ = vae.encoder(movie_input)
-                movie_embeddings.append(mu.numpy())
-            except Exception as e:
-                print(f"Error processing row {index}: {e}")
+        try:
+            # Stack all inputs into a single tensor and move to device
+            batch_inputs = torch.stack(movie_inputs).to(DEVICE)
+            
+            # Get embeddings for the entire batch at once
+            mu, _ = vae.encoder(batch_inputs)
+            
+            # Convert to numpy and return
+            movie_embeddings = mu.cpu().numpy()
+            
+        except Exception as e:
+            print(f"Error in batch processing: {e}")
+            # Fallback to individual processing
+            movie_embeddings = []
+            for movie_input in movie_inputs:
+                try:
+                    movie_input = movie_input.to(DEVICE)
+                    mu, _ = vae.encoder(movie_input.unsqueeze(0))
+                    movie_embeddings.append(mu.squeeze(0).cpu().numpy())
+                except Exception as e:
+                    print(f"Error in fallback processing: {e}")
 
     return movie_embeddings
 
@@ -264,19 +294,26 @@ def generate_recommendations(user_rating, movie_features, movie_features_sample,
         # Ensure distinct recommendations
         recommended_movies = recommended_movies.drop_duplicates(subset=['primaryTitle'])
 
-        # Decode titles
-        recommended_movies['decoded_title'] = movie_encoder.inverse_transform(
-            recommended_movies['primaryTitle'].astype(int).values
-        )
+        # Use original titles directly
+        try:
+            recommended_movies['decoded_title'] = recommended_movies['original_title']
+        except KeyError:
+            # Fallback if original_title column doesn't exist
+            print("Warning: original_title column not found, using fallback titles")
+            recommended_movies['decoded_title'] = [f"Movie {i}" for i in range(len(recommended_movies))]
 
-        #removing NaN titles
-        recommended_movies = recommended_movies.dropna()
+        # Remove NaN titles
+        recommended_movies = recommended_movies.dropna(subset=['decoded_title'])
 
-        print("returning recommendations")
+        print(f"returning recommendations, found {len(recommended_movies)} movies")
+        
         # Select top_n distinct movies
-        return recommended_movies.head(top_n)[['decoded_title', 'similarity_score']].rename(
+        result = recommended_movies.head(top_n)[['decoded_title', 'similarity_score']].rename(
             columns={'decoded_title': 'Movie', 'similarity_score': 'Similarity Score'}
         )
+        
+        print(f"Final result shape: {result.shape}")
+        return result
 
 def scale_inputs(input1, input2, range1=(0, 10), range2=(0, 1000)):
     # Normalize input1 using range1
@@ -298,43 +335,28 @@ def scale_inputs(input1, input2, range1=(0, 10), range2=(0, 1000)):
     return scaled_input1, scaled_input2
 
 def run_for_frontend(genres_selected, avg_rating, num_votes):
-    # Load preprocessed data and trained model
-    data, user_data, _, movie_encoder = preprocess_data(
-        MOVIE_DATA_PATH, USER_DATA_PATH
-    )
-    print("preparing features...")
-
-    genre_list, _, movie_features = prepare_features(data, user_data)
-    print("loading model...")
-
-    
-    input_dim = len(genre_list) + 3  # Number of genres + avg_rating + num_votes
-    vae = VAE(input_dim, *HIDDEN_DIMS, LATENT_DIM)
-    vae.load_state_dict(torch.load("vae_model.pth"))
-    vae.eval()
-    print("Model loaded successfully.")
-    
+    if any(x is None for x in [data, user_data, movie_encoder, genre_list, movie_features, vae]):
+        initialize_globals()
+    filtered_data = data
+    filtered_movie_features = movie_features
     scaled_avg_rating, scaled_votes_num = scale_inputs(float(avg_rating), float(num_votes))
-
-    # Prepare input for recommendation
-    user_input_vector =  [
-        1 if genre in genres_selected else 0 for genre in genre_list
-    ] + [scaled_avg_rating, scaled_votes_num]
+    user_input_vector = [1 if genre in genres_selected else 0 for genre in genre_list] + [scaled_avg_rating, scaled_votes_num]
     user_rating = 0.5
-    print("generating recommendation...")
-
     output = generate_recommendations(
         user_rating,
-        movie_features,
+        filtered_movie_features,
         user_input_vector,
         vae,
-        data,
-        movie_encoder
+        filtered_data,
+        movie_encoder,
+        top_n=5
     )
-    
-    # Get ranks
-    output["Rank"] = range(1, len(output) + 1, 1)
-    # Move 'Rank' column to the first position
-    output = output[['Rank', 'Movie', 'Similarity Score']]
-
+    # Add genre to output, merge on decoded movie title
+    if not output.empty:
+        output = output.merge(filtered_data[['original_title', 'genres']], left_on='Movie', right_on='original_title', how='left')
+        output = output.drop(columns=['original_title'])
+        output['Rank'] = range(1, len(output) + 1)
+        output = output[['Rank', 'Movie', 'genres', 'Similarity Score']]
+        output = output.rename(columns={'genres': 'Genre(s)'})
+        output = output.head(5)  # Ensure only top 5 are shown
     return output

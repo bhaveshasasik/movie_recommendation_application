@@ -3,7 +3,7 @@ from train_save_model import train_and_save_model
 
 TRAIN_REQUIRED = False # change to True when running for the first time
 DEBUG = False # change to True when debugging
-PORT = 5000
+PORT = 8080
 
 if __name__ == "__main__":
     if TRAIN_REQUIRED:

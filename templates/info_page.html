@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flick Finder - Info</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.svg">
+    <style>
+      body { background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%); }
+      .hero {
+        padding: 2.5rem 1rem 1.5rem 1rem;
+        text-align: center;
+        background: #fff;
+        border-radius: 1.5rem;
+        box-shadow: 0 4px 32px rgba(80,80,180,0.08);
+        margin-bottom: 2rem;
+        animation: fadeIn 1s;
+      }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(30px);} to { opacity: 1; transform: none; } }
+      .card { border: none; border-radius: 1.5rem; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="/">
+      <i class="bi bi-film"></i> Flick Finder
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="/"><i class="bi bi-house"></i> Home</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="container">
+  <div class="hero mx-auto col-lg-8 col-xl-7">
+    <h2 class="fw-bold mb-2"><i class="bi bi-info-circle"></i> About Flick Finder</h2>
+    <p class="lead mb-3">Flick Finder is a modern movie recommendation app. Select your favorite genres, desired average rating, and number of votes to get personalized movie suggestions powered by AI.</p>
+    <ul class="list-unstyled mb-3">
+      <li><i class="bi bi-check-circle text-success"></i> Choose one or more genres</li>
+      <li><i class="bi bi-check-circle text-success"></i> Set your preferred average rating (0-10)</li>
+      <li><i class="bi bi-check-circle text-success"></i> Set the minimum number of votes (0-1000)</li>
+      <li><i class="bi bi-check-circle text-success"></i> Get a list of recommended movies!</li>
+    </ul>
+    <p class="text-muted mt-3">Created for movie lovers. <i class="bi bi-heart-fill text-danger"></i></p>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</body>
+</html> 
