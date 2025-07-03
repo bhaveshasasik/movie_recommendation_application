@@ -1,75 +1,82 @@
+# 🎬 Flick Finder: Movie Recommendation Application
 
-# Movie Recommendation Application
-
-## Overview
-This application is a Movie Recommendation System that uses user-selected movies, along with data on ratings, cast, and actors, to generate personalized movie recommendations. The system is accessible through a simple and user-friendly web interface.
+Flick Finder is a modern, user-friendly web application that recommends movies based on your favorite genres, desired average rating, and number of votes. Powered by a Variational Autoencoder (VAE) model, it delivers personalized movie suggestions with a beautiful, responsive UI.
 
 ---
 
-## Features
-- **Personalized Recommendations**: Get movie suggestions tailored to your preferences.
-- **Data-Driven**: Utilizes data on ratings, cast, genres, and actors to generate recommendations.
-- **Docker Support**: Easily run the application using Docker on X86 or ARM architectures.
+## 🚀 Features
+- **Modern, clean UI** with genre selection, rating, and votes input
+- **Fast recommendations** using a pre-trained VAE model (PyTorch)
+- **Results displayed as stylish cards** with movie title, genre(s), and similarity score
+- **Loading spinner** for user feedback during processing
+- **Error handling** and input validation
+- **Easy to run locally** (no cloud dependencies)
 
 ---
 
-## Getting Started
+## 🛠️ Tech Stack
+- **Backend:** Python, Flask, PyTorch, Pandas, scikit-learn
+- **Frontend:** HTML, CSS, JavaScript (vanilla, no frameworks)
+- **Model:** Variational Autoencoder (VAE)
 
-### Clone the Application
-First, clone the repository to your local machine:
+---
+
+## ⚡ Quickstart
+
+### 1. Clone the repository
 ```bash
-$ git clone https://github.com/bhaveshasasik/movie_recommendation_application
-$ cd movie_recommendation_application
+git clone https://github.com/your-username/your-repo-name.git
+cd your-repo-name
 ```
 
----
-
-### Run the Application Locally
-To start the application locally, use the following command:
+### 2. Install dependencies
 ```bash
-$ python website.py
+pip install -r requirements.txt
 ```
-Then open your browser and navigate to:
+
+### 3. (Optional) Train the model
+If you want to retrain the model, set `TRAIN_REQUIRED = True` in `website.py` and run:
+```bash
+python website.py
 ```
-http://localhost:5000
+Then set `TRAIN_REQUIRED = False` for normal use.
+
+### 4. Run the application
+```bash
+python website.py
+```
+
+### 5. Open in your browser
+Go to [http://localhost:8080](http://localhost:8080)
+
+---
+
+## ✨ Usage
+1. Select one or more genres.
+2. Enter your desired average rating (0-10) and number of votes (0-1000).
+3. Click **Get Recommendations**.
+4. View your top 5 movie recommendations on a beautiful results page.
+
+---
+
+## 📁 Project Structure
+```
+movie_recommendation_application/
+├── data/                  # Movie and user data CSVs
+├── vae_main.py            # VAE model and recommendation logic
+├── frontend.py            # Flask app and UI templates
+├── website.py             # App entry point
+├── requirements.txt       # Python dependencies
+├── README.md              # This file
+└── ...
 ```
 
 ---
 
-## Docker Installation
-The application can also be run using Docker. Below are the instructions for both X86 and ARM architectures:
-
-### X86 Installation
-1. Pull the Docker image:
-   ```bash
-   $ docker pull randomlogic01/ecs170:x86
-   ```
-2. Run the Docker container:
-   ```bash
-   $ docker run -p [YOUR_PORT]:5000 randomlogic01/ecs170:x86
-   ```
-3. Open your browser and navigate to:
-   ```
-   http://localhost:[YOUR_PORT]
-   ```
-
-### ARM Installation
-1. Pull the Docker image:
-   ```bash
-   $ docker pull randomlogic01/ecs170:arm
-   ```
-2. Run the Docker container:
-   ```bash
-   $ docker run -p [YOUR_PORT]:5000 randomlogic01/ecs170:arm
-   ```
-3. Open your browser and navigate to:
-   ```
-   http://localhost:[YOUR_PORT]
-   ```
+## 🤝 Contributing
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
 ---
 
-## Usage
-Once the application is running, follow these steps:
-1. Enter the genre, rating, and how popular you want the movie to be.
-2. View the recommended movies based on your input.
+## 📄 License
+MIT License. See [LICENSE](LICENSE) for details.
